@@ -1,0 +1,30 @@
+{
+    "name": "vinothkumar/request-logger",
+    "description": "A laravel package to track request flow",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Vinothkumar\\RequestLogger\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "vinothkumar95",
+            "email": "cvinoth95@outlook.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "illuminate/support": "^10|^11"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Vinothkumar\\RequestLogger\\RequestLoggerServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
