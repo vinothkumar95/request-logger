@@ -6,18 +6,40 @@ use Monolog\LogRecord;
 
 class AddRequestIdProcessor
 {
-    public function __invoke(LogRecord $record)
+    private string $headerName;
+    private string $requestAttributeKey;
+
+    public function __construct(string $headerName, string $requestAttributeKey)
+    {
+        $this->headerName = $headerName;
+        $this->requestAttributeKey = $requestAttributeKey;
+    }
+
+    public function __invoke(LogRecord $record): LogRecord
     {
         try {
-            if (app()->bound('request') && app('request')->hasHeader('X-Request-Id')) {
-                $record['extra']['request_id'] = app('request')->header('X-Request-Id');
-            } elseif (app()->bound('request_id')) {
-                $record['extra']['request_id'] = app('request_id');
-            } else {
-                $record['extra']['request_id'] = 'n/a';
+            $requestId = null;
+            if (app()->bound('request')) {
+                $request = app('request');
+                // Try to get from request attribute first (set by middleware)
+                if ($request->attributes->has($this->requestAttributeKey)) {
+                    $requestId = $request->attributes->get($this->requestAttributeKey);
+                }
+                // Fallback to header if not found in attribute (e.g., if middleware hasn't run yet for some reason)
+                elseif ($request->hasHeader($this->headerName)) {
+                    $requestId = $request->header($this->headerName);
+                }
             }
+            
+            // Fallback if request is not available or ID is not found yet
+            if (is_null($requestId) && app()->bound($this->requestAttributeKey)) {
+                 $requestId = app($this->requestAttributeKey);
+            }
+
+            $record['extra'][$this->requestAttributeKey] = $requestId ?: 'n/a';
+
         } catch (\Throwable $e) {
-            $record['extra']['request_id'] = 'unavailable';
+            $record['extra'][$this->requestAttributeKey] = 'unavailable';
         }
 
         return $record;
