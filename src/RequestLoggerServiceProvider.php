@@ -8,28 +8,40 @@ use Vinothkumar\RequestLogger\Logging\AddRequestIdProcessor;
 
 class RequestLoggerServiceProvider extends ServiceProvider
 {
-    protected function addRequestIdProcessor(): void
+    public function boot(): void
     {
-        try {
-            $logger = Log::getLogger();
-
-            // Prevent duplicate processors
-            static $pushed = false;
-            if ($pushed) return;
-
-            if (method_exists($logger, 'pushProcessor')) {
-                $logger->pushProcessor(new AddRequestIdProcessor());
-                $pushed = true;
-            }
-        } catch (\Throwable $e) {
-            error_log('RequestId Processor Error: ' . $e->getMessage());
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../config/request-logger.php' => config_path('request-logger.php'),
+            ], 'request-logger-config');
         }
+
+        $this->addRequestIdProcessor();
     }
 
     public function register(): void
     {
-        $this->app->booting(function () {
-            $this->addRequestIdProcessor();
-        });
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/request-logger.php', 'request-logger'
+        );
+    }
+
+    protected function addRequestIdProcessor(): void
+    {
+        try {
+            $defaultChannel = config('logging.default');
+            if ($defaultChannel) {
+                $logger = Log::channel($defaultChannel);
+
+                if (method_exists($logger, 'pushProcessor')) {
+                    $logger->pushProcessor(new AddRequestIdProcessor(
+                        config('request-logger.header_name', 'X-Request-Id'),
+                        config('request-logger.request_attribute_key', 'request_id')
+                    ));
+                }
+            }
+        } catch (\Throwable $e) {
+            // Let Laravel's standard error handling manage it.
+        }
     }
 }
